@@ -8,7 +8,8 @@ let guildId = nvideaID;
 var heyClips = require('./heysoundClips.json');
 var soundClips = require('./soundClips.json');
 
-const player = createAudioPlayer();
+const player = setUpAudioPlayer();
+let connection = null;
 
 const client = new Client({ intents: 
     [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMessages] });
@@ -67,7 +68,7 @@ async function playHeyClip(userID, voiceState){
     if (channel) {
         try {
             console.log('connecting to channel...')
-            const connection = await connectToChannel(channel);
+            await connectToChannel(channel);
             console.log('subscribing player...')
             connection.subscribe(player);
             const stream = getYoutubeStream(link)
@@ -82,10 +83,10 @@ async function playHeyClip(userID, voiceState){
 async function playAudioResource(stream) {
     // console.log(stream)
     try {
-        const probe = await demuxProbe(stream)
+        // const probe = await demuxProbe(stream)
 
-        const resource = createAudioResource(probe.stream, { inputType: probe.type });
-        // const resource = createAudioResource(stream, { inputType: StreamType.Arbitrary });
+        // const resource = createAudioResource(probe.stream, { inputType: probe.type });
+        const resource = createAudioResource(stream, { inputType: StreamType.Arbitrary });
         
         player.play(resource);
         return entersState(player, AudioPlayerStatus.Playing, 10e3);
@@ -97,7 +98,7 @@ async function playAudioResource(stream) {
 }
 
 async function connectToChannel(channel) {
-	const connection = joinVoiceChannel({
+	connection = joinVoiceChannel({
 		channelId: channel.id,
 		guildId: channel.guild.id,
 		adapterCreator: channel.guild.voiceAdapterCreator,
@@ -105,9 +106,10 @@ async function connectToChannel(channel) {
     console.log('entersState')
 	try {
 		await entersState(connection, VoiceConnectionStatus.Ready, 30e3);
-		return connection;
 	} catch (error) {
-		connection.destroy();
+        if(connection){
+            connection.destroy();
+        }
 		throw error;
 	}
 }
@@ -132,4 +134,24 @@ function getYoutubeStream(link){
     }
 
     return stream = process.stdout;
+}
+
+function setUpAudioPlayer(){
+    let player = createAudioPlayer();
+
+    player.on(AudioPlayerStatus.Playing, () => {
+        console.log('/hey is now playing!');
+    });
+
+    player.on(AudioPlayerStatus.Idle, () => {
+        console.log('hey has finished playing!');
+        connection.disconnect();
+    });
+
+    // Always remember to handle errors appropriately!
+    player.on('error', error => {
+        console.error(`Error: ${error.message} with resource ${error.resource.metadata.title}`);
+    });
+    return player;
+
 }
