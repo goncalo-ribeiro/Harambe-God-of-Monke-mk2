@@ -1,14 +1,16 @@
 //https://www.youtube.com/watch?v=sHksse4EUFU
-const { Client, Events, GatewayIntentBits, Intents } = require('discord.js');
+const { Client, Events, GatewayIntentBits, Intents} = require('discord.js');
 const { token, nvideaID, tarasManiasID, gandiniFunClubID } = require('./auth.json');
-const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus} = require('@discordjs/voice');
+const { joinVoiceChannel, createAudioPlayer, createAudioResource, getVoiceConnection, entersState, demuxProbe, AudioPlayerStatus, VoiceConnectionStatus, StreamType } = require('@discordjs/voice');
 const ytdl = require('ytdl-core');
+const { exec } = require( 'youtube-dl-exec');
 let guildId = nvideaID;
 
 var heyClips = require('./heysoundClips.json');
 var soundClips = require('./soundClips.json');
 
-// const client = new Client({ intents: ['GuildVoiceStates', 'GuildMessages', 'Guilds'] });
+const player = createAudioPlayer();
+
 const client = new Client({ intents: 
     [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMessages] });
 
@@ -59,50 +61,76 @@ client.on('voiceStateUpdate', (oldState, newState) =>{
 async function playHeyClip(userID, voiceState){   
     console.log('playHeyClip start', userID)
 
-    let youtubeRegex = /^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$/
-        link = heyClips[userID].link;
-        volume = heyClips[userID].volume;
-        regexResult = link.match(youtubeRegex)
-        console.log(regexResult)
+    let link = heyClips[userID].link;
+    let volume = heyClips[userID].volume;
+    const channel = voiceState.channel
 
+    if (channel) {
         try {
-            
-            var voiceChannel = voiceState.channel
-            if (voiceChannel) {
-                const connection = joinVoiceChannel({
-                    channelId: voiceChannel.id,
-                    guildId: voiceChannel.guild.id,
-                    adapterCreator: voiceChannel.guild.voiceAdapterCreator,
-                });
-                let stream = (regexResult) ?  ytdl(link, { filter : 'audioonly' }) : link;
-                //console.log(stream)
-                // dispatcher = connection.play(stream, streamOptions);
-                const player = createAudioPlayer();
-                const resource = createAudioResource(stream, { inlineVolume: true });
-                resource.volume.setVolume(volume);
-
-                player.play(resource);
-                connection.subscribe(player)
-                
-                player.on(AudioPlayerStatus.Playing, () => {
-                    console.log('/hey is now playing!');
-                });
-
-                player.on(AudioPlayerStatus.Idle, () => {
-                    console.log('hey has finished playing!');
-                    connection.disconnect();
-                });
-
-                // Always remember to handle errors appropriately!
-                player.on('error', error => {
-                    console.error(`Error: ${error.message} with resource ${error.resource.metadata.title}`);
-                    player.play(getNextResource());
-                });
-                return('now playing ' + heyClips[userID].memberName + '\'s custom clip at ' + heyClips[userID].volume*100 + '% volume');
-            } 
-            return('you must be in a voice chat to play your sound clip');
+            console.log('connecting to channel...')
+            const connection = await connectToChannel(channel);
+            console.log('subscribing player...')
+            connection.subscribe(player);
+            const stream = getYoutubeStream(link)
+            console.log('Playing audio resource...')
+            playAudioResource(stream)
         } catch (error) {
             console.log(error);
-            return('chamem o rick crl, nao era suposto chegar aqui');
         }
+    }       
+}
+
+async function playAudioResource(stream) {
+    // console.log(stream)
+    try {
+        const probe = await demuxProbe(stream)
+
+        const resource = createAudioResource(probe.stream, { inputType: probe.type });
+        // const resource = createAudioResource(stream, { inputType: StreamType.Arbitrary });
+        
+        player.play(resource);
+        return entersState(player, AudioPlayerStatus.Playing, 10e3);
+    } catch (error) {
+        console.log(error)
+        // connection.destroy();
+        throw error;
+    }
+}
+
+async function connectToChannel(channel) {
+	const connection = joinVoiceChannel({
+		channelId: channel.id,
+		guildId: channel.guild.id,
+		adapterCreator: channel.guild.voiceAdapterCreator,
+	});
+    console.log('entersState')
+	try {
+		await entersState(connection, VoiceConnectionStatus.Ready, 30e3);
+		return connection;
+	} catch (error) {
+		connection.destroy();
+		throw error;
+	}
+}
+
+function getYoutubeStream(link){
+
+    const process = exec(
+        link,
+        {
+            output: '-',
+            // quiet: true,
+            format: 'ba',
+            // audioFormat: 'mp3',
+            verbose: true,
+            // limitRate: '1M',
+        }
+        ,{ stdio: ['ignore', 'pipe', 'ignore'] },
+    );
+    if (!process.stdout) {
+        console.log('no process.stdout')
+        return;
+    }
+
+    return stream = process.stdout;
 }
