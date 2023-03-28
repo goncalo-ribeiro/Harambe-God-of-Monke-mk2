@@ -1,3 +1,4 @@
+//https://www.youtube.com/watch?v=sHksse4EUFU
 const { Client, Events, GatewayIntentBits, Intents } = require('discord.js');
 const { token, nvideaID, tarasManiasID, gandiniFunClubID } = require('./auth.json');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus} = require('@discordjs/voice');
@@ -47,14 +48,8 @@ client.on('ready', function (evt) {
 client.on('voiceStateUpdate', (oldState, newState) =>{
     let userID = oldState.id;
     
-    console.log(0)
-    // console.log(heyClips.hasOwnProperty(userID))
-    // console.log(oldState.id, oldState.channelID)
-    // console.log(newState.id, newState.channelID)
     if(heyClips.hasOwnProperty(userID) && oldState.channelId === null && newState.channelId != null){
-        console.log(1)
         if(heyClips[userID].enabled){
-            console.log(2)
             console.log('playing ' + heyClips[userID].memberName + '\'s hey clip')
             playHeyClip(userID, newState);
         }   
@@ -79,12 +74,8 @@ async function playHeyClip(userID, voiceState){
                     guildId: voiceChannel.guild.id,
                     adapterCreator: voiceChannel.guild.voiceAdapterCreator,
                 });
-
-                //const streamOptions = { seek: 0, volume: volume };
-                let stream;
-
-                stream = (regexResult) ?  ytdl(link, { filter : 'audioonly' }) : link;
-                console.log(stream)
+                let stream = (regexResult) ?  ytdl(link, { filter : 'audioonly' }) : link;
+                //console.log(stream)
                 // dispatcher = connection.play(stream, streamOptions);
                 const player = createAudioPlayer();
                 const resource = createAudioResource(stream, { inlineVolume: true });
