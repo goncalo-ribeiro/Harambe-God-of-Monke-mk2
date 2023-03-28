@@ -2,7 +2,6 @@
 const { Client, Events, GatewayIntentBits, Intents} = require('discord.js');
 const { token, nvideaID, tarasManiasID, gandiniFunClubID } = require('./auth.json');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, getVoiceConnection, entersState, demuxProbe, AudioPlayerStatus, VoiceConnectionStatus, StreamType } = require('@discordjs/voice');
-const ytdl = require('ytdl-core');
 const { exec } = require( 'youtube-dl-exec');
 let guildId = nvideaID;
 
