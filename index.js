@@ -108,6 +108,7 @@ async function playHeyClip(userID, voiceState){
             console.log('subscribing player...')
             connection.subscribe(player);
             const stream = regexResult ? ytdl(link, { filter : 'audioonly' }) : await getStreamFromURL(link)
+            // console.log(stream)
             console.log('Playing audio resource...')
             playAudioResource(player, stream, volume)
         } catch (error) {
