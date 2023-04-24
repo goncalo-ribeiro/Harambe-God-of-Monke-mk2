@@ -1,6 +1,6 @@
 //https://www.youtube.com/watch?v=sHksse4EUFU
-const { Client, Events, GatewayIntentBits, Intents} = require('discord.js');
-const { token, nvideaID, tarasManiasID, gandiniFunClubID } = require('./auth.json');
+const { Client, Events, GatewayIntentBits, Intents, REST, Routes, SlashCommandBuilder} = require('discord.js');
+const { token, nvideaID, tarasManiasID, gandiniFunClubID, clientId } = require('./auth.json');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, getVoiceConnection, entersState, demuxProbe, AudioPlayerStatus, VoiceConnectionStatus, StreamType } = require('@discordjs/voice');
 const ytdl = require('ytdl-core');
 const https = require('https');
@@ -9,6 +9,8 @@ const fs = require('fs')
 var heyClips = require('./heysoundClips.json');
 var soundClips = require('./soundClips.json');
 const guildId = nvideaID
+const rest = new REST().setToken(token);
+
 
 const player = setUpAudioPlayer();
 let connection = null;
@@ -27,24 +29,8 @@ client.once(Events.ClientReady, c => {
 });    
 
 client.on('ready', function (evt) {
-    client.user.setPresence({ activity: { name: 'over Monke Heaven', type:"WATCHING" }, status: 'online' })
-
     //#region Slash command manipulation section
-    /* Get SlashCommands
-    client.api.applications(client.user.id).guilds(guildId).commands.get().then(data => {
-        console.log(data)
-    });
-    */
-
-   /* Get Info
-    client.api.applications(client.user.id).guilds(guildId).commands.resolve('902190034873098261').then(data => {
-       console.log(data)
-    });
-    */
-
-    /* Delete Slash Command
-    //client.api.applications(client.user.id).guilds(guildId).commands('902190034873098261').delete()
-    */
+    // deleteSlashCommands(nvideaID)
    //#endregion
 
     //UNCOMMENT
@@ -211,6 +197,7 @@ async function hey(interaction){
 
     let linkSet = false;
     let saveToFile = false;
+    
 
     console.log('hey start', memberId, memberName)
 
@@ -224,312 +211,104 @@ async function hey(interaction){
     }
     
     //console.log(interaction.data.options)
-    if (interaction.data.options != undefined){
+    if (interaction.options != undefined){
         saveToFile = true;
 
-        for (let i = 0; i < interaction.data.options.length; i++) {
-            const option = interaction.data.options[i];
-            if(option.name === 'link'){
-                console.log('link = ', link)
-                let urlRegExp = /^(ftp|http|https):\/\/[^ "]+$/
-                regexResult = option.value.match(urlRegExp);
-                if(regexResult){
-                    link = option.value;
-                    heyClips[memberId].link = link
-                    linkSet = true;
-                }else{
-                    return('please specify a valid url');
-                }
-            }if(option.name === 'volume'){
-                console.log('volume = ', volume)
-                if((option.value >= 10) && (option.value <= 200)){
-                    volume = option.value / 100;
-                    heyClips[memberId].volume = volume
-                }else{
-                    return('please specify a valid volume [10-200]');
-                }
+        // Interaction options extractor
+        const interactionLink = interaction.options.getString('link');
+        const interactionVolume = interaction.options.getInteger('volume');
+        const interactionEnabled = interaction.options.getBoolean('enabled');
+        console.log(interactionLink, interactionVolume, interactionEnabled)
+
+        //link processor
+        if(interactionLink){
+            console.log('link = ', interactionLink)
+
+            let urlRegExp = /^(ftp|http|https):\/\/[^ "]+$/
+            regexResult = interactionLink.match(urlRegExp);
+            if(regexResult){
+                link = interactionLink;
+                heyClips[memberId].link = link
+                linkSet = true;
+            }else{
+                return('please specify a valid url');
             }
-            if(option.name === 'enabled'){
-                enabled = option.value
-                heyClips[memberId].enabled = enabled
+        }
+
+        //volume processor
+        if(interactionVolume){
+            console.log('volume = ', interactionVolume)
+
+            if((interactionVolume >= 10) && (interactionVolume <= 200)){
+                volume = interactionVolume / 100;
+                heyClips[memberId].volume = volume
+            }else{
+                return('please specify a valid volume [10-200]');
             }
+        }
+            
+            //enabled processor
+        if(interactionEnabled !== null){
+            console.log('enabled = ', interactionEnabled)
+
+            enabled = interactionEnabled
+            heyClips[memberId].enabled = enabled
         }
     }
     if(saveToFile){
         console.log("write to file")
+        console.log(heyClips)
         await fs.writeFile('heysoundClips.json', JSON.stringify(heyClips, null, 4), (err) => {});
     }
     let response = (linkSet) ? "Hey sound clip successfully set 👌" : 'Hey sound clip changes were saved 👌'
     return response;
 }
 
-//#region register slash commands
+//#region manage slash commands
 function registerSlashCommands(){
-    //manual
-    client.api.applications(client.user.id).guilds(guildId).commands.post({data: {
-        name: 'bless',
-        description: 'surround thyself in holy light and transcend thy mortal state'
-    }})
-    client.api.applications(client.user.id).guilds(guildId).commands.post({data: {
-        name: 'caburro',
-        description: 'para quando alguem está a ser burro'
-    }})
-    client.api.applications(client.user.id).guilds(guildId).commands.post({data: {
-        name: 'coco',
-        description: 'para quando te apetece carapaus à espanhola'
-    }})  
-    client.api.applications(client.user.id).guilds(guildId).commands.post({data: {
-        name: 'commando',
-        description: 'witness the might of the ugandan commandos'
-    }})
-    client.api.applications(client.user.id).guilds(guildId).commands.post({data: {
-        name: 'dc',
-        description: 'break in case of emergency'
-    }})
-    /*
-    client.api.applications(client.user.id).guilds(guildId).commands.post({data: {
-        name: 'finishheroff',
-        description: 'sponsored by Marcode'
-    }})
-    */
-    client.api.applications(client.user.id).guilds(guildId).commands.post({data: {
-        name: 'kekeres',
-        description: 'kekeres crl?'
-    }})
-    client.api.applications(client.user.id).guilds(guildId).commands.post({data: {
-        name: 'monke',
-        description: 'reject humanity, embrace monke'
-    }})
-    client.api.applications(client.user.id).guilds(guildId).commands.post({data: {
-        name: 'passbanana',
-        description: 'spread the love within your server'
-    }})
-    client.api.applications(client.user.id).guilds(guildId).commands.post({data: {
-        name: 'marcode',
-        description: 'comandos sponsored pelo progamationer do server',
-        options: [
-            {
-                "name": "comando",
-                "description": "comando altes besta",
-                "type": 3,
-                "required": true,
-                "choices": [
-                    {
-                        "name": "finishheroff",
-                        "value": "finishheroff"
-                    },
-                    {
-                        "name": "praisethelord",
-                        "value": "praisethelord"
-                    },
-                ]
-            }
-        ]
-    }})
+    const commands = [
+        new SlashCommandBuilder()
+        .setName('hey')
+        .setDescription('create your own customized sound clip')
+        .addStringOption(option =>
+			option
+				.setName('link')
+				.setDescription('specify your custom sound clip which will play whenever you enter voice channel'))
+        .addIntegerOption(option =>
+			option
+				.setName('volume')
+				.setDescription('specify your custom sound clip volume [10 - 200]% (default 100%)'))
+        .addBooleanOption(option =>
+			option
+				.setName('enabled')
+				.setDescription('enable or disable the sound clip from playing (default: TRUE)'))
+    ].map(command => command.toJSON());
 
-    client.api.applications(client.user.id).guilds(guildId).commands.post({data: {
-        name: 'toy',
-        description: 'um programa de culto...'
-    }})
+    const rest = new REST().setToken(token);
 
-    client.api.applications(client.user.id).guilds(guildId).commands.post({data: {
-        name: 'lixo',
-        description: 'TSF in a nutshell'
-    }})
+    // and deploy your commands!
+    (async () => {
+        try {
+            console.log(`Started refreshing ${commands.length} application (/) commands.`);
 
-    client.api.applications(client.user.id).guilds(guildId).commands.post({data: {
-        name: 'coffin',
-        description: '🕺🏿🕺🏿⚰️🕺🏿🕺🏿'
-    }})
+            // The put method is used to fully refresh all commands in the guild with the current set
+            const data = await rest.put(
+                Routes.applicationGuildCommands(clientId, guildId),
+                { body: commands },
+            );
 
-    client.api.applications(client.user.id).guilds(guildId).commands.post({data: {
-        name: 'herewego',
-        description: '✌⭐'
-    }})
-    client.api.applications(client.user.id).guilds(guildId).commands.post({data: {
-        name: 'leona',
-        description: 'Bust in case of Leona'
-    }})
-    client.api.applications(client.user.id).guilds(guildId).commands.post({data: {
-        name: 'wazzaa',
-        description: 'wassup my ninja?'
-    }})
-    client.api.applications(client.user.id).guilds(guildId).commands.post({data: {
-        name: 'emocionado',
-        description: 'ouvi as palavras sábias do nuno melo'
-    }})
-    client.api.applications(client.user.id).guilds(guildId).commands.post({data: {
-        name: 'espetaculo',
-        description: 'ESHBETÁAAAAAAAAAAAACULO!'
-    }})
-    client.api.applications(client.user.id).guilds(guildId).commands.post({data: {
-        name: 'conspiracy',
-        description: 'ask Harambe his opinion about conspiracy theories'
-    }})
+            console.log(`Successfully reloaded ${data.length} application (/) commands.`);
+        } catch (error) {
+            // And of course, make sure you catch and log any errors!
+            console.error(error);
+        }
+    })();
+}
 
-
-    
-    client.api.applications(client.user.id).guilds(guildId).commands.post({data: {
-        name: 'hey',
-        description: 'create your own customized sound clip',
-        options: [
-            {
-                "name": "link",
-                "description": "specify your custom sound clip which will play whenever you enter voice channel",
-                "type": 3,
-            },
-            {
-                "name": "volume",
-                "description": "specify your custom sound clip volume [10 - 200]% (default 100%)",
-                "type": 4,
-            },
-            {
-                "name": "enabled",
-                "description": "enable or disable the sound clip from playing (default: TRUE)",
-                "type": 5,
-            },
-        ],
-    }})
-
-    registerSoundClipCommands()
-
-    client.api.applications(client.user.id).guilds(guildId).commands.post({data: {
-        name: 'rift',
-        description: 'The Rift yearns for its tribute',
-        options: [
-            {
-                "name": "aram",
-                "value": "aram",
-                "description": "Fight over the Murder Bridge? (DEFAULT: FALSE)",
-                "type": 5,
-            },
-            {
-                "name": "toxicbros",
-                "value": "toxicbros",
-                "description": "Summon only the Toxic Bros? (DEFAULT: FALSE)",
-                "type": 5,
-            },
-        ],
-    }})
-
-    client.api.applications(client.user.id).guilds(guildId).commands.post({data: {
-        name: 'gameofthrows',
-        description: 'Break in case of throw'
-    }})
-    /*
-    client.api.applications(client.user.id).guilds(guildId).commands.post({data: {
-        name: 'bet',
-        description: 'welcome to the Nvidea Highstakes Casino Extravaganza',
-        options: [
-            {
-                "name": "yes",
-                "value": "yes",
-                "description": "bet that the desired unit will be pulled",
-                "type": 1,
-                "options": [
-                    {
-                        "name": "credits",
-                        "description": "specify the ammount of credits to bet (type \"all in\" to bet all of your remaining credits)",
-                        "type": 3, 
-                        "required": true,
-                    },
-                ]
-            },
-            {
-                "name": "no",
-                "value": "no",
-                "description": "bet that the desired unit will not be pulled",
-                "type": 1,
-                "options": [
-                    {
-                        "name": "credits",
-                        "description": "specify the ammount of credits to bet (type \"all in\" to bet all of your remaining credits)",
-                        "type": 3, 
-                        "required": true,
-                    },
-                ]
-            },
-            {
-                "name": "cancel",
-                "value": "cancel",
-                "description": "cancel your current bet",
-                "type": 1
-            },
-            {
-                "name": "odds",
-                "value": "odds",
-                "description": "check the bettings odds",
-                "type": 1
-            },
-            {
-                "name": "status",
-                "value": "status",
-                "description": "show the status of the current pull",
-                "type": 1
-            },
-            {
-                "name": "ranking",
-                "value": "ranking",
-                "description": "list the credits of all the users",
-                "type": 1
-            },
-            {
-                "name": "end",
-                "value": "end",
-                "description": "use this to crown the winner",
-                "type": 1
-            },
-            {
-                "name": "result",
-                "description": "set whether or not the desired unit was pulled or not",
-                "type": 1, 
-                "options": [
-                    {
-                        "name": "pulled",
-                        "description": "was the desired unit pulled?",
-                        "type": 5, 
-                        "required": true,
-                    },
-                    {
-                        "name": "70pity",
-                        "description": "was the pull made with 70+ pity (defaults to False)",
-                        "type": 5,
-                    },
-                    {
-                        "name": "pulltype",
-                        "description": "10 pull or single pull (defaults to 10 pull)",
-                        "type": 3,
-                        "choices": [
-                            {
-                                "name": "10 pull",
-                                "value": "10 pull"
-                            },
-                            {
-                                "name": "single pull",
-                                "value": "single pull"
-                            },
-                        ] 
-                    },
-                    {
-                        "name": "undo",
-                        "description": "use this to undo the latest \"/bet result\" command",
-                        "type": 5,
-                    },
-                ],/*
-                
-                "choices": [
-                    {
-                        "name": "yes",
-                        "value": "yes"
-                    },
-                    {
-                        "name": "no",
-                        "value": "no"
-                    },
-                ]
-            }
-        ]
-    }})*/
+function deleteSlashCommands(guildId){
+    rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: [] })
+	.then(() => console.log('Successfully deleted all guild commands.'))
+	.catch(console.error);
 }
 //#endregion
 
@@ -537,404 +316,15 @@ function registerSlashCommands(){
 client.on('interactionCreate', async interaction => {
     console.log('on INTERACTION_CREATE');
     //console.log(interaction)
-   /*
-    if (interaction.data.name === 'kekeres'){
-        let interactionUserId = interaction.member.user.id;
-        kekeres(interactionUserId).then( (resposta) => {
-            console.log('resposta', resposta)
-    
-            client.api.interactions(interaction.id, interaction.token).callback.post({data: {
-                type: 4,
-                data: {
-                  content: resposta
-                }
-            }})
-        })
-        return;
-    }
-
-    if (interaction.data.name === 'dc'){
-        dc().then( (resposta) => {
-            console.log('resposta', resposta)
-            client.api.interactions(interaction.id, interaction.token).callback.post({data: {
-                type: 4,
-                data: {
-                content: resposta
-                }
-            }})
-        })
-        return;
-    }
-
-    if (interaction.data.name === 'bless'){
-        let interactionUserId = interaction.member.user.id;
-        bless(interactionUserId).then( (resposta) => {
-            console.log('resposta', resposta)
-
-            client.api.interactions(interaction.id, interaction.token).callback.post({data: {
-                type: 4,
-                data: {
-                  content: resposta
-                }
-            }})
-        })
-        return;
-    }
-
-    if (interaction.data.name === 'commando'){
-        let interactionUserId = interaction.member.user.id;
-        commando(interactionUserId).then( (resposta) => {
-            console.log('resposta', resposta)
-
-            client.api.interactions(interaction.id, interaction.token).callback.post({data: {
-                type: 4,
-                data: {
-                  content: resposta
-                }
-            }})
-        })
-        return;
-    }
-
-    if (interaction.data.name === 'passbanana'){
-        passbanana().then( (resposta) => {
-            console.log('resposta', resposta)
-            client.api.interactions(interaction.id, interaction.token).callback.post({data: {
-                type: 4,
-                data: {
-                content: resposta
-                }
-            }})
-        })
-        return;
-    }
-
-    if (interaction.data.name === 'caburro'){
-        let interactionUserId = interaction.member.user.id;
-        caburro(interactionUserId).then( (resposta) => {
-            console.log('resposta', resposta)
-
-            client.api.interactions(interaction.id, interaction.token).callback.post({data: {
-                type: 4,
-                data: {
-                  content: resposta
-                }
-            }})
-        })
-        return;
-    }
-
-    if (interaction.data.name === 'coco'){
-        let interactionUserId = interaction.member.user.id;
-        coco(interactionUserId).then( (resposta) => {
-            console.log('resposta', resposta)
-
-            client.api.interactions(interaction.id, interaction.token).callback.post({data: {
-                type: 4,
-                data: {
-                  content: resposta
-                }
-            }})
-        })
-        return;
-    }
-
-    if (interaction.data.name === 'monke'){
-        let interactionUserId = interaction.member.user.id;
-        monke(interactionUserId).then( (resposta) => {
-            console.log('resposta', resposta)
-
-            client.api.interactions(interaction.id, interaction.token).callback.post({data: {
-                type: 4,
-                data: {
-                  content: resposta
-                }
-            }})
-        })
-        return;
-    }
-
-    if (interaction.data.name === 'marcode'){
-        console.log(interaction.data.options[0])
-        if(interaction.data.options[0].value === 'finishheroff'){
-            let interactionUserId = interaction.member.user.id;
-            finishheroff(interactionUserId).then( (resposta) => {
-                console.log('resposta', resposta)
-    
-                client.api.interactions(interaction.id, interaction.token).callback.post({data: {
-                    type: 4,
-                    data: {
-                      content: resposta
-                    }
-                }})
-            })
-            return;
-        }
-        if (interaction.data.options[0].value === 'praisethelord'){
-            let interactionUserId = interaction.member.user.id;
-            praisethelord(interactionUserId).then( (resposta) => {
-                console.log('resposta', resposta)
-    
-                client.api.interactions(interaction.id, interaction.token).callback.post({data: {
-                    type: 4,
-                    data: {
-                      content: resposta
-                    }
-                }})
-            })
-            return;
-        }
-
-    }
-
-    if (interaction.data.name === 'toy'){
-        let interactionUserId = interaction.member.user.id;
-        toy(interactionUserId).then( (resposta) => {
-            console.log('resposta', resposta)
-
-            client.api.interactions(interaction.id, interaction.token).callback.post({data: {
-                type: 4,
-                data: {
-                  content: resposta
-                }
-            }})
-        })
-        return;
-    }
-
-    if (interaction.data.name === 'lixo'){
-        let interactionUserId = interaction.member.user.id;
-        lixo(interactionUserId).then( (resposta) => {
-            console.log('resposta', resposta)
-
-            client.api.interactions(interaction.id, interaction.token).callback.post({data: {
-                type: 4,
-                data: {
-                  content: resposta
-                }
-            }})
-        })
-        return;
-    }
-
-    if (interaction.data.name === 'coffin'){
-        let interactionUserId = interaction.member.user.id;
-        coffin(interactionUserId).then( (resposta) => {
-            console.log('resposta', resposta)
-
-            client.api.interactions(interaction.id, interaction.token).callback.post({data: {
-                type: 4,
-                data: {
-                  content: resposta
-                }
-            }})
-        })
-        return;
-    }
-
-    if (interaction.data.name === 'herewego'){
-        let interactionUserId = interaction.member.user.id;
-        herewego(interactionUserId).then( (resposta) => {
-            console.log('resposta', resposta)
-
-            client.api.interactions(interaction.id, interaction.token).callback.post({data: {
-                type: 4,
-                data: {
-                  content: resposta
-                }
-            }})
-        })
-        return;
-    }
-
-    if (interaction.data.name === 'wazzaa'){
-        let interactionUserId = interaction.member.user.id;
-        wazzaa(interactionUserId).then( (resposta) => {
-            console.log('resposta', resposta)
-
-            client.api.interactions(interaction.id, interaction.token).callback.post({data: {
-                type: 4,
-                data: {
-                  content: resposta
-                }
-            }})
-        })
-        return;
-    }
-
-    if (interaction.data.name === 'leona'){
-        let interactionUserId = interaction.member.user.id;
-        leona(interactionUserId).then( (resposta) => {
-            console.log('resposta', resposta)
-
-            client.api.interactions(interaction.id, interaction.token).callback.post({data: {
-                type: 4,
-                data: {
-                  content: resposta
-                }
-            }})
-        })
-        return;
-    }
-
-    if (interaction.data.name === 'rift'){
-        console.log(interaction)
-        //let interactionUserId = interaction.member.user.id;
-        rift(interaction).then( (resposta) => {
-            console.log('resposta', resposta)
-
-            client.api.interactions(interaction.id, interaction.token).callback.post({data: {
-                type: 4,
-                data: {
-                  content: resposta
-                }
-            }})
-        })
-        return;
-    }
-
-    if (interaction.data.name === 'emocionado'){
-        console.log(interaction)
-        let interactionUserId = interaction.member.user.id;
-        emocionado(interactionUserId).then( (resposta) => {
-            console.log('resposta', resposta)
-
-            client.api.interactions(interaction.id, interaction.token).callback.post({data: {
-                type: 4,
-                data: {
-                  content: resposta
-                }
-            }})
-        })
-        return;
-    }
-
-    if (interaction.data.name === 'espetaculo'){
-        console.log(interaction)
-        let interactionUserId = interaction.member.user.id;
-        espetaculo(interactionUserId).then( (resposta) => {
-            console.log('resposta', resposta)
-
-            client.api.interactions(interaction.id, interaction.token).callback.post({data: {
-                type: 4,
-                data: {
-                  content: resposta
-                }
-            }})
-        })
-        return;
-    }
-
-    if (interaction.data.name === 'conspiracy'){
-        console.log(interaction)
-        let interactionUserId = interaction.member.user.id;
-        conspiracy(interactionUserId).then( (resposta) => {
-            console.log('resposta', resposta)
-
-            client.api.interactions(interaction.id, interaction.token).callback.post({data: {
-                type: 4,
-                data: {
-                  content: resposta
-                }
-            }})
-        })
-        return;
-    }
-*/
 
     if (interaction.commandName === 'hey'){
         //console.log(interaction)
         hey(interaction).then( (resposta) => {
             console.log('resposta', resposta)
             interaction.reply(resposta)
-
-            // client.api.interactions(interaction.id, interaction.token).callback.post({data: {
-            //     type: 4,
-            //     data: {
-            //       content: resposta
-            //     }
-            // }})
         })
         return;
     }
-
-    /*
-    if (interaction.data.name === 'clip'){
-        //console.log(interaction)
-        clip(interaction).then( (resposta) => {
-            console.log('resposta', resposta)
-
-            client.api.interactions(interaction.id, interaction.token).callback.post({data: {
-                type: 4,
-                data: {
-                  content: resposta
-                }
-            }})
-        })
-        return;
-    }
-
-    if (interaction.data.name === 'soundclip'){
-        console.log('********************************************************************')
-        console.log(interaction.data.options)
-
-        if(interaction.data.options[0].name === 'upload'){
-            soundclipUpload(interaction).then( (resposta) => {
-                console.log('resposta', resposta)
-    
-                client.api.interactions(interaction.id, interaction.token).callback.post({data: {
-                    type: 4,
-                    data: {
-                      content: resposta
-                    }
-                }})
-            })
-        }else{
-            if(interaction.data.options[0].name === 'delete'){
-                soundclipDelete(interaction).then( (resposta) => {
-                    console.log('resposta', resposta)
-        
-                    client.api.interactions(interaction.id, interaction.token).callback.post({data: {
-                        type: 4,
-                        data: {
-                          content: resposta
-                        }
-                    }})
-                })
-            }else{
-                if(interaction.data.options[0].name === 'volume'){
-                    soundclipEditVolume(interaction).then( (resposta) => {
-                        console.log('resposta', resposta)
-            
-                        client.api.interactions(interaction.id, interaction.token).callback.post({data: {
-                            type: 4,
-                            data: {
-                              content: resposta
-                            }
-                        }})
-                    })
-                }
-            }
-        }
-
-        return;
-    }
-
-    if (interaction.data.name === 'gameofthrows'){
-        console.log(interaction)
-        //let interactionUserId = interaction.member.user.id;
-        gameOfThrows(interaction).then( (resposta) => {
-            console.log('resposta', resposta)
-
-            client.api.interactions(interaction.id, interaction.token).callback.post({data: {
-                type: 4,
-                data: {
-                  content: resposta
-                }
-            }})
-        })
-        return;
-    }*/
 
     else{
         client.api.interactions(interaction.id, interaction.token).callback.post({data: {
