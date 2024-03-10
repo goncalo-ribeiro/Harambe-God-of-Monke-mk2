@@ -99,6 +99,7 @@ async function playHeyClip(userID, voiceState){
             playAudioResource(player, stream, volume)
         } catch (error) {
             console.log(error);
+            connection.destroy();
         }
     }       
 }
