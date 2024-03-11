@@ -5,6 +5,7 @@ const { joinVoiceChannel, createAudioPlayer, createAudioResource, getVoiceConnec
 const ytdl = require('ytdl-core');
 const https = require('https');
 const fs = require('fs')
+const got = require('got');
 
 var heyClips = require('./heysoundClips.json');
 var soundClips = require('./soundClips.json');
@@ -93,8 +94,7 @@ async function playHeyClip(userID, voiceState){
             await connectToChannel(channel);
             console.log('subscribing player...')
             connection.subscribe(player);
-            const stream = regexResult ? ytdl(link, { filter : 'audioonly' }) : await getStreamFromURL(link)
-            // console.log(stream)
+            const stream = regexResult ? ytdl(link, { filter : 'audioonly' }) : got.stream(link)
             console.log('Playing audio resource...')
             playAudioResource(player, stream, volume)
         } catch (error) {
@@ -134,9 +134,8 @@ async function getStreamFromURL(link){
 }
 
 async function playAudioResource(player, stream, volume) {
-    // console.log(stream)
     try {
-        const resource = createAudioResource(stream, { inputType: StreamType.Arbitrary, inlineVolume: true });
+        const resource = createAudioResource(stream, {inputType: StreamType.Arbitrary, inlineVolume: true });
         resource.volume.setVolume(volume)
         // console.log(resource)
 
