@@ -16,6 +16,6 @@
     "got": "^11.8.6",
     "libsodium-wrappers": "^0.7.11",
     "prism-media": "^1.3.5",
-    "ytdl-core": "^4.11.4"
+    "ytdl-core": "^4.11.5"
   }
 }
