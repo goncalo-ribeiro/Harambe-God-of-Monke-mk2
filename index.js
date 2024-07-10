@@ -2,7 +2,8 @@
 const { Client, Events, GatewayIntentBits, Intents, REST, Routes, SlashCommandBuilder} = require('discord.js');
 const { token, nvideaID, tarasManiasID, gandiniFunClubID, clientId } = require('./auth.json');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, getVoiceConnection, entersState, demuxProbe, AudioPlayerStatus, VoiceConnectionStatus, StreamType } = require('@discordjs/voice');
-const ytdl = require('ytdl-core');
+//const ytdl = require('ytdl-core');
+const ytdl = require("@distube/ytdl-core");
 const https = require('https');
 const fs = require('fs')
 const got = require('got');
@@ -65,6 +66,28 @@ client.on('messageCreate', async (message) => {
             }
 		}
 	}
+    if (message.content.substring(0, 5) === '-play') {
+        const voiceState = message.member?.voice;
+
+        const args = message.content.substring(4).split(' ');
+        console.log(args)
+
+		if (voiceState && args[1]) {
+			try {
+                console.log('Playing '+ args[1]);
+                message.reply('Playing '+ args[1]);
+				playYoutubeSong(args[1], voiceState);
+			} catch (error) {
+				console.error(error);
+			}
+		} else {
+            if(!voiceState){
+                message.reply('Join a voice channel then try again!');
+            }else{
+                message.reply('Please input a valid URL!');
+            }
+		}
+    }
 });
 
 client.on('voiceStateUpdate', (oldState, newState) =>{
@@ -77,6 +100,32 @@ client.on('voiceStateUpdate', (oldState, newState) =>{
         }   
     }  
 } )
+
+async function playYoutubeSong(youtubeURL, voiceState){   
+    console.log('playYoutubeSong start', youtubeURL)
+
+    const link = youtubeURL;
+    const channel = voiceState.channel
+    
+    const youtubeRegex = /^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$/
+    const regexResult = link.match(youtubeRegex)
+
+    if (channel && regexResult) {
+        try {
+            console.log('connecting to channel...')
+            await connectToChannel(channel);
+            console.log('subscribing player...')
+            connection.subscribe(player);
+            const stream = ytdl(link, { filter : 'audioonly' })
+            console.log('Playing audio resource...')
+            playAudioResource(player, stream, null)
+        } catch (error) {
+            console.log(error);
+            connection.destroy();
+        }
+    }       
+}
+
 
 async function playHeyClip(userID, voiceState){   
     console.log('playHeyClip start', userID)
@@ -136,7 +185,9 @@ async function getStreamFromURL(link){
 async function playAudioResource(player, stream, volume) {
     try {
         const resource = createAudioResource(stream, {inputType: StreamType.Arbitrary, inlineVolume: true });
-        resource.volume.setVolume(volume)
+        if(volume){
+            resource.volume.setVolume(volume)
+        }
         // console.log(resource)
 
         player.play(resource);
