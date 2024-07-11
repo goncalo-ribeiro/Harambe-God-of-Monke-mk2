@@ -66,6 +66,7 @@ client.on('messageCreate', async (message) => {
             }
 		}
 	}
+    /*
     if (message.content.substring(0, 5) === '-play') {
         const voiceState = message.member?.voice;
 
@@ -87,7 +88,7 @@ client.on('messageCreate', async (message) => {
                 message.reply('Please input a valid URL!');
             }
 		}
-    }
+    }*/
 });
 
 client.on('voiceStateUpdate', (oldState, newState) =>{
