@@ -10,7 +10,7 @@ const got = require('got');
 
 var heyClips = require('./heysoundClips.json');
 var soundClips = require('./soundClips.json');
-const guildId = nvideaID
+const guildId = gandiniFunClubID
 const rest = new REST().setToken(token);
 
 
@@ -36,7 +36,7 @@ client.on('ready', function (evt) {
    //#endregion
 
     //UNCOMMENT
-    // registerSlashCommands();
+    //registerSlashCommands();
 });
 
 client.on('messageCreate', async (message) => {
@@ -237,6 +237,10 @@ function setUpAudioPlayer(){
 
 }
 
+async function caburro(interaction){
+    return('https://cdn.discordapp.com/attachments/434883051085103105/865593595548139550/caburro720p.mp4')
+}
+
 async function hey(interaction){   
 
     let memberId = interaction.member.user.id;
@@ -333,8 +337,13 @@ function registerSlashCommands(){
         .addBooleanOption(option =>
 			option
 				.setName('enabled')
-				.setDescription('enable or disable the sound clip from playing (default: TRUE)'))
+				.setDescription('enable or disable the sound clip from playing (default: TRUE)')),
+
+        new SlashCommandBuilder()
+        .setName('caburro')
+        .setDescription('para quando alguem está a ser burro')
     ].map(command => command.toJSON());
+    
 
     const rest = new REST().setToken(token);
 
@@ -377,6 +386,16 @@ client.on('interactionCreate', async interaction => {
         })
         return;
     }
+
+    if (interaction.commandName === 'caburro'){
+        //console.log(interaction)
+        caburro(interaction).then( (resposta) => {
+            console.log('resposta', resposta)
+            interaction.reply(resposta)
+        })
+        return;
+    }
+
 
     else{
         client.api.interactions(interaction.id, interaction.token).callback.post({data: {
